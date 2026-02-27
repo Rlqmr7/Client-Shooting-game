@@ -7,15 +7,32 @@
 
 #pragma comment(lib, "ws2_32.lib")
 
+// ★ここにサーバーのIPを入れる★
+const char* SERVER_IP = "192.168.xx.xx";
+
 struct PLAYER_DATA { int x, y, angle, type; };
 struct Entity { float curX, curY, tarX, tarY; int id, type; };
 struct Bullet { float x, y; };
 
 int WINAPI WinMain(HINSTANCE h, HINSTANCE hp, LPSTR lp, int n) {
     WSADATA wsaData; WSAStartup(MAKEWORD(2, 2), &wsaData);
+
+    // --- 【追加】TCPで接続確認を行う ---
+    SOCKET tcpSock = socket(AF_INET, SOCK_STREAM, 0);
+    sockaddr_in servAddrTcp = { AF_INET, htons(8888) }; // TCPは8888番
+    inet_pton(AF_INET, "192.168.42.174", &servAddrTcp.sin_addr.s_addr);
+
+    printf("Connecting to Server...\n");
+    if (connect(tcpSock, (sockaddr*)&servAddrTcp, sizeof(servAddrTcp)) == SOCKET_ERROR) {
+        MessageBox(NULL, "Server not found! (TCP Connection Failed)", "Error", MB_OK);
+        return -1;
+    }
+    // ----------------------------------
+
+    // UDPの準備 (ポートは8889に変更)
     SOCKET sock = socket(AF_INET, SOCK_DGRAM, 0);
-    sockaddr_in servAddr = { AF_INET, htons(8888) };
-    inet_pton(AF_INET, "127.168.42.174", &servAddr.sin_addr.s_addr);
+    sockaddr_in servAddr = { AF_INET, htons(8889) };
+    inet_pton(AF_INET, "192.168.42.174", &servAddr.sin_addr.s_addr);
     unsigned long arg = 0x01; ioctlsocket(sock, FIONBIO, &arg);
 
     ChangeWindowMode(TRUE); SetGraphMode(1280, 720, 32);
@@ -37,7 +54,7 @@ int WINAPI WinMain(HINSTANCE h, HINSTANCE hp, LPSTR lp, int n) {
         PLAYER_DATA sd = { (int)htonl(myX), (int)htonl(myY), 0, (int)htonl(0) };
         sendto(sock, (char*)&sd, sizeof(sd), 0, (sockaddr*)&servAddr, sizeof(servAddr));
 
-        // 2. 受信（痙攣防止：溜まっている最新データまで読み飛ばす）
+        // 2. 受信
         PLAYER_DATA rb[512];
         int ret;
         while ((ret = recvfrom(sock, (char*)rb, sizeof(rb), 0, NULL, NULL)) > 0) {
@@ -59,7 +76,7 @@ int WINAPI WinMain(HINSTANCE h, HINSTANCE hp, LPSTR lp, int n) {
             others = nextOthers;
         }
 
-        // 3. 自機弾の処理
+        // 3. 自機弾
         static int ls = 0;
         if ((GetMouseInput() & MOUSE_INPUT_LEFT) && GetNowCount() - ls > 150) {
             pBullets.push_back({ (float)myX, (float)myY }); ls = GetNowCount();
@@ -77,7 +94,7 @@ int WINAPI WinMain(HINSTANCE h, HINSTANCE hp, LPSTR lp, int n) {
             else { DrawGraph((int)bit->x - 16, (int)bit->y - 16, imgB, TRUE); ++bit; }
         }
 
-        // 4. 敵・他人の描画と被弾判定
+        // 4. 描画と被弾判定
         for (auto& e : others) {
             if (e.type == 2) {
                 DrawGraph((int)e.tarX - 16, (int)e.tarY - 16, imgEB, TRUE);
@@ -86,29 +103,25 @@ int WINAPI WinMain(HINSTANCE h, HINSTANCE hp, LPSTR lp, int n) {
                 e.curX += (e.tarX - e.curX) * 0.2f; e.curY += (e.tarY - e.curY) * 0.2f;
                 DrawGraph((int)e.curX - 32, (int)e.curY - 32, (e.type == 1 ? imgE : imgP), TRUE);
             }
-
             if (invinc == 0) {
                 float d = hypot((float)myX - e.tarX, (float)myY - e.tarY);
                 if ((e.type == 1 && d < 35) || (e.type == 2 && d < 15)) {
-                    invinc = 120; // 無敵2秒
-                    score -= 500; if (score < 0) score = 0;
+                    invinc = 120; score -= 500; if (score < 0) score = 0;
                 }
             }
         }
 
-        // 5. 自機の描画（点滅：24フレーム周期）
-        bool showShip = true;
-        if (invinc > 0 && (invinc % 24 < 12)) showShip = false;
-
-        if (showShip) {
+        // 5. 点滅描画
+        if (invinc == 0 || (invinc % 24 < 12)) {
             DrawGraph(myX - 32, myY - 32, imgP, TRUE);
         }
 
-        // UI
         DrawFormatString(1100, 20, GetColor(255, 255, 0), "SCORE: %d", score);
         if (invinc > 0) DrawString(myX - 40, myY + 40, "-500 pts!", GetColor(255, 0, 0));
 
         ScreenFlip();
     }
+
+    closesocket(tcpSock); // 使い終わったら閉じる
     DxLib_End(); return 0;
 }
