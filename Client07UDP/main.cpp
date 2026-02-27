@@ -8,7 +8,7 @@
 #pragma comment(lib, "ws2_32.lib")
 
 // ★ここにサーバーのIPを入れる★
-const char* SERVER_IP = "192.168.xx.xx";
+const char* SERVER_IP = "192.168.42.122";
 
 struct PLAYER_DATA { int x, y, angle, type; };
 struct Entity { float curX, curY, tarX, tarY; int id, type; };
@@ -20,7 +20,7 @@ int WINAPI WinMain(HINSTANCE h, HINSTANCE hp, LPSTR lp, int n) {
     // --- 【追加】TCPで接続確認を行う ---
     SOCKET tcpSock = socket(AF_INET, SOCK_STREAM, 0);
     sockaddr_in servAddrTcp = { AF_INET, htons(8888) }; // TCPは8888番
-    inet_pton(AF_INET, "192.168.42.174", &servAddrTcp.sin_addr.s_addr);
+    inet_pton(AF_INET, SERVER_IP, &servAddrTcp.sin_addr.s_addr);
 
     printf("Connecting to Server...\n");
     if (connect(tcpSock, (sockaddr*)&servAddrTcp, sizeof(servAddrTcp)) == SOCKET_ERROR) {
@@ -32,12 +32,13 @@ int WINAPI WinMain(HINSTANCE h, HINSTANCE hp, LPSTR lp, int n) {
     // UDPの準備 (ポートは8889に変更)
     SOCKET sock = socket(AF_INET, SOCK_DGRAM, 0);
     sockaddr_in servAddr = { AF_INET, htons(8889) };
-    inet_pton(AF_INET, "192.168.42.174", &servAddr.sin_addr.s_addr);
+    inet_pton(AF_INET, SERVER_IP, &servAddr.sin_addr.s_addr);
     unsigned long arg = 0x01; ioctlsocket(sock, FIONBIO, &arg);
 
     ChangeWindowMode(TRUE); SetGraphMode(1280, 720, 32);
     DxLib_Init(); SetDrawScreen(DX_SCREEN_BACK);
 
+    int imgBG = LoadGraph("Assets\\bg.png");
     int imgP = LoadGraph("Assets\\tiny_ship5.png"), imgE = LoadGraph("Assets\\EnemyZK_ship.png");
     int imgB = LoadGraph("Assets\\Pbullet.png"), imgEB = LoadGraph("Assets\\Ebullete.png");
 
@@ -47,6 +48,8 @@ int WINAPI WinMain(HINSTANCE h, HINSTANCE hp, LPSTR lp, int n) {
 
     while (ProcessMessage() == 0 && !CheckHitKey(KEY_INPUT_ESCAPE)) {
         ClearDrawScreen();
+        DrawGraph(0, 0, imgBG, FALSE);
+
         GetMousePoint(&myX, &myY);
         if (invinc > 0) invinc--;
 
