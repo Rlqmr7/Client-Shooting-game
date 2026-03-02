@@ -8,7 +8,7 @@
 #pragma comment(lib, "ws2_32.lib")
 
 // ★ここにサーバーのIPを入れる★
-const char* SERVER_IP = "192.168.42.122";
+const char* SERVER_IP = "192.168.42.174";
 
 struct PLAYER_DATA { int x, y, angle, type; };
 struct Entity { float curX, curY, tarX, tarY; int id, type; };
