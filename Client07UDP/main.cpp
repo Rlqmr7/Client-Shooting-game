@@ -45,10 +45,12 @@ int WINAPI WinMain(HINSTANCE h, HINSTANCE hp, LPSTR lp, int n) {
     std::vector<Entity> others;
     std::vector<Bullet> pBullets;
     int myX, myY, score = 0, invinc = 0;
+    int bgScrollY = 0;
 
     while (ProcessMessage() == 0 && !CheckHitKey(KEY_INPUT_ESCAPE)) {
         ClearDrawScreen();
-        DrawGraph(0, 0, imgBG, FALSE);
+        DrawGraph(0, bgScrollY, imgBG, FALSE);
+        DrawGraph(0, bgScrollY - 720, imgBG, FALSE);
 
         GetMousePoint(&myX, &myY);
         if (invinc > 0) invinc--;
@@ -121,6 +123,9 @@ int WINAPI WinMain(HINSTANCE h, HINSTANCE hp, LPSTR lp, int n) {
 
         DrawFormatString(1100, 20, GetColor(255, 255, 0), "SCORE: %d", score);
         if (invinc > 0) DrawString(myX - 40, myY + 40, "-500 pts!", GetColor(255, 0, 0));
+
+        bgScrollY += 2;
+        if (bgScrollY >= 720) bgScrollY = 0;
 
         ScreenFlip();
     }
